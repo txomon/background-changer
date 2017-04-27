@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"image"
 	"io"
 	"os"
@@ -18,6 +19,10 @@ import (
 	"net/http"
 
 	"strings"
+
+	"crypto/sha1"
+
+	"fmt"
 
 	"github.com/juju/loggo"
 	"github.com/spf13/viper"
@@ -49,6 +54,7 @@ func (lbc LinuxBackgroundChanger) getSupportedFormats() []string {
 const (
 	ConfigurationPicturePath    = "picture_path"
 	ConfigurationChangeInterval = "change_interval"
+	ConfigurationCacheDir       = "cache_dir"
 )
 
 func configure() {
@@ -60,6 +66,7 @@ func configure() {
 	// Variables
 	viper.SetDefault(ConfigurationPicturePath, ".")
 	viper.SetDefault(ConfigurationChangeInterval, time.Duration(math.Pow(10, 10))) // 10 seconds
+	viper.SetDefault(ConfigurationCacheDir, "./cache")
 
 	// Read and monitor configuration
 	viper.ReadInConfig()
@@ -68,7 +75,7 @@ func configure() {
 	logger.SetLogLevel(loggo.DEBUG)
 }
 
-func isBackground(backgroundDescriptors ...interface{}) bool {
+func isBackground(backgroundDescriptors ...interface{}) string {
 	for index, backgroundDescriptor := range backgroundDescriptors {
 		logger.Tracef("%v# try to find out if background using %v", index, backgroundDescriptor)
 		retry := true
@@ -81,7 +88,7 @@ func isBackground(backgroundDescriptors ...interface{}) bool {
 				for _, supportedFormat := range obc.getSupportedFormats() {
 					if strings.HasSuffix(format, supportedFormat) {
 						logger.Tracef("File %v ends in %v so it's supported format", bd, format)
-						return true
+						return format
 					}
 				}
 				info, err := os.Stat(bd)
@@ -91,7 +98,7 @@ func isBackground(backgroundDescriptors ...interface{}) bool {
 				}
 				if info.IsDir() {
 					logger.Tracef("File is a directory, skipping %v", bd)
-					return false
+					return ""
 				}
 				backgroundDescriptor, err = os.Open(bd)
 				if err != nil {
@@ -104,24 +111,27 @@ func isBackground(backgroundDescriptors ...interface{}) bool {
 				_, format, err := image.Decode(bd)
 				if err != nil {
 					logger.Tracef("Format (%v) not recognished. %v", format, err)
-					return false
+					return ""
 				}
 				for _, supportedFormat := range obc.getSupportedFormats() {
 					if supportedFormat == format {
 						logger.Tracef("Format %v supported", format)
-						return true
+						return format
 					}
 				}
 				logger.Tracef("Format %v is not supported", format)
-				return false
-
+				return ""
+			case []byte:
+				bd := backgroundDescriptor.([]byte)
+				backgroundDescriptor = bytes.NewReader(bd)
+				retry = true
 			default:
 				logger.Warningf("No idea how to use %T to determine if valid background", bdt)
 			}
 		}
 	}
 	logger.Tracef("File not a background by default. %v", backgroundDescriptors)
-	return false
+	return ""
 }
 
 func getPhotosForPath(path string) []string {
@@ -141,7 +151,7 @@ func getPhotosForPath(path string) []string {
 			logger.Warningf("Couldn't open %v for supported format filtering. %v", path, err)
 			return err
 		}
-		if !isBackground(file) {
+		if "" == isBackground(file) {
 			logger.Debugf("File %v not a background", file)
 			return err
 		}
@@ -166,7 +176,6 @@ func getNextInList(lastItem string, previousList []string, nextList []string) st
 					return newNextItem
 				}
 			}
-
 		}
 	}
 
@@ -210,6 +219,10 @@ type PhotoDownloader struct {
 	cacheDirectory string
 }
 
+func (photoDownloader PhotoDownloader) getBackendName() string {
+	return fmt.Sprintf("%vDownloaded", photoDownloader.backend.getBackendName())
+}
+
 func (photoDownloader PhotoDownloader) getPhotos() ([]string, error) {
 	var photos []string
 	backendPhotos, err := photoDownloader.backend.getPhotos()
@@ -228,9 +241,49 @@ func (photoDownloader PhotoDownloader) getPhotos() ([]string, error) {
 		if err != nil {
 			logger.Warningf("Failed to GET photo %v. %v", photo, err)
 		}
-		var body []byte
-		res.Body.Read(body)
+		var photoContent []byte
+		_, err = res.Body.Read(photoContent)
+		if err != nil {
+			logger.Infof("Failed to read all the body from %v", photo)
+		}
+		format := isBackground(photoContent)
+		if "" == format {
+			logger.Infof("Photo %v format is not supported by backend", photo)
+			continue
+		}
 
+		photoName := sha1.Sum(photoContent)
+		photoExtension := format
+		photoFilePath := fmt.Sprintf("%v.%v", photoName, photoExtension)
+		photoPath := filepath.Join(backendCacheDirectory, photoFilePath)
+		stat, err := os.Stat(photoPath)
+		if err == nil {
+			if stat.IsDir() {
+				logger.Warningf("For some reason %v is a directory...", stat)
+			}
+			continue
+		}
+
+		photoFile, err := os.Create(photoPath)
+		if err != nil {
+			logger.Warningf("Creating file %v failed. %v", photoPath, err)
+			continue
+		}
+
+		size, err := photoFile.Write(photoContent)
+		if err != nil {
+			logger.Warningf("Writing in file %v failed. %v", photoPath, err)
+			continue
+		}
+		logger.Debugf("Written %v bytes to %v", size, photoPath)
+
+		err = photoFile.Close()
+		if err != nil {
+			logger.Warningf("Closing the file failed. %v", err)
+			continue
+		}
+
+		photos = append(photos, photoPath)
 	}
 	return photos, err
 }
