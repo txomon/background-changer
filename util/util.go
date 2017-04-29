@@ -28,7 +28,7 @@ func IsBackground(backgroundDescriptors ...interface{}) string {
 				format := strings.ToLower(bdt)
 				for _, supportedFormat := range supportedFormats {
 					if strings.HasSuffix(format, supportedFormat) {
-						logger.Tracef("File %v ends in %v so it's supported format", bd, format)
+						logger.Tracef("File %v ends in %v so it's supported format", format, supportedFormat)
 						return format
 					}
 				}

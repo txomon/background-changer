@@ -17,12 +17,18 @@ type PhotoLinker struct {
 	cacheDir string
 }
 
-func (pl PhotoLinker) run() {
-	pl.backend.run()
+func (pl PhotoLinker) run(photoProvider PhotoProvider) {
+	if photoProvider == nil {
+		photoProvider = pl
+	}
+	pl.backend.run(photoProvider)
 }
 
+func (pl PhotoLinker) String() string {
+	return fmt.Sprint("linked-", pl.getBackendName())
+}
 func (pl PhotoLinker) getBackendName() string {
-	return fmt.Sprintf("%vLinker", pl.backend.getBackendName())
+	return pl.backend.getBackendName()
 }
 
 func (pl PhotoLinker) getPhotos() ([]string, error) {
@@ -39,6 +45,7 @@ func (pl PhotoLinker) getPhotos() ([]string, error) {
 	}
 
 	for _, backendPhotoPath := range backendPhotos {
+		logger.Tracef("Procesing photo %v", backendPhotoPath)
 		if info, err := os.Stat(backendPhotoPath); err != nil {
 			logger.Infof("Could not stat file %v. %v", backendPhotoPath, err)
 			continue
@@ -69,6 +76,7 @@ func (pl PhotoLinker) getPhotos() ([]string, error) {
 			if info.IsDir() {
 				logger.Warningf("The to-be-linked exists and is a directory! %v", photoPath)
 			}
+			logger.Tracef("File %v exists, skipping.", photoPath)
 			continue
 		}
 

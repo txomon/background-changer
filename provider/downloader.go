@@ -15,12 +15,18 @@ type PhotoDownloader struct {
 	cacheDirectory string
 }
 
-func (pd PhotoDownloader) run() {
-	pd.backend.run()
+func (pd PhotoDownloader) run(photoProvider PhotoProvider) {
+	if photoProvider == nil {
+		photoProvider = pd
+	}
+	pd.backend.run(pd)
+}
+func (pd PhotoDownloader) String() string {
+	return fmt.Sprint("downloader-", pd.getBackendName())
 }
 
 func (pd PhotoDownloader) getBackendName() string {
-	return fmt.Sprintf("%vDownloaded", pd.backend.getBackendName())
+	return pd.backend.getBackendName()
 }
 
 func (pd PhotoDownloader) getPhotos() ([]string, error) {

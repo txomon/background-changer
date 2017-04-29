@@ -7,7 +7,7 @@ var logger = loggo.GetLogger("sawyer.provider")
 type PhotoProvider interface {
 	getPhotos() ([]string, error)
 	getBackendName() string
-	run()
+	run(PhotoProvider)
 }
 
 var registeredProviders = make(map[string]func(map[string]interface{}) PhotoProvider)
@@ -34,15 +34,16 @@ func GetProvider(config map[string]interface{}) PhotoProvider {
 	return provider
 }
 
-func RunProviders(configs []map[string]interface{}) {
+func RunProviders(configs []interface{}) {
 	logger.Debugf("Providers registered %v", registeredProviders)
 	logger.Debugf("Config %v", configs)
-	for _, config := range configs {
+	for _, interfaceConfig := range configs {
+		config := interfaceConfig.(map[string]interface{})
 		provider := GetProvider(config)
 		if provider == nil {
 			logger.Warningf("No provider found for %v", config)
 		} else {
-			go provider.run()
+			go provider.run(nil)
 		}
 	}
 }

@@ -37,6 +37,7 @@ func configure() {
 	viper.ReadInConfig()
 
 	logger.SetLogLevel(loggo.TRACE)
+	loggo.GetLogger("sawyer.util").SetLogLevel(loggo.INFO)
 }
 
 func DaemonMain() {
@@ -54,9 +55,9 @@ func DaemonMain() {
 	for _, supportedFormat := range obc.GetSupportedFormats() {
 		util.RegisterSupportedFormat(supportedFormat)
 	}
-	providerConfigs := viper.Get(ConfigurationProviders)
+	providerConfigs := viper.Get(ConfigurationProviders).([]interface{})
 	logger.Infof("Read config for providers %v", providerConfigs)
-	provider.RunProviders(providerConfigs.([]map[string]interface{}))
+	provider.RunProviders(providerConfigs)
 	go pictureMonitor(pictureStream)
 	obc.ChangeBackground(pictureStream)
 }
