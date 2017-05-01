@@ -1,52 +1,55 @@
 package provider
 
 import (
-	"path/filepath"
-
-	"os"
-
-	"fmt"
-
 	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/txomon/sawyer/util"
 )
 
 type PhotoLinker struct {
-	backend  PhotoProvider
-	cacheDir string
+	backend        *PhotoProvider
+	cacheDirectory string
 }
 
-func (pl PhotoLinker) run(photoProvider PhotoProvider) {
+func (pl *PhotoLinker) run(photoProvider *PhotoProvider) {
+	var pp PhotoProvider = pl
 	if photoProvider == nil {
-		photoProvider = pl
+		photoProvider = &pp
 	}
-	pl.backend.run(photoProvider)
+	(*pl.backend).run(photoProvider)
+}
+func (pl *PhotoLinker) setStorageLocation(cacheDirectory string) {
+	logger.Tracef("Set storagedirectory to %v, %p", cacheDirectory, &pl)
+	pl.cacheDirectory = cacheDirectory
+	logger.Tracef("Set storagedirectory to %v, %p", pl.cacheDirectory, &pl)
 }
 
-func (pl PhotoLinker) String() string {
-	return fmt.Sprint("linked-", pl.getBackendName())
+func (pl *PhotoLinker) String() string {
+	return fmt.Sprint("linked-", pl.getName())
 }
-func (pl PhotoLinker) getBackendName() string {
-	return pl.backend.getBackendName()
+func (pl *PhotoLinker) getName() string {
+	return (*pl.backend).getName()
 }
 
 func (pl PhotoLinker) getPhotos() ([]string, error) {
-	var photos = make([]string, 0)
+	logger.Tracef("Storagedirectory to %v, %p", pl.cacheDirectory, &pl)
+	photos := make([]string, 0)
 
-	backendPhotos, err := pl.backend.getPhotos()
-	photoDir := filepath.Join(pl.cacheDir, pl.backend.getBackendName())
-	if _, err = os.Stat(photoDir); err != nil {
-		logger.Debugf("Cache dir for %v backend doesn't exist", pl.getBackendName())
-		if err = os.MkdirAll(photoDir, 0755); err != nil {
-			logger.Errorf("Failed to create cache dir for %v", pl.getBackendName())
-			return nil, err
-		}
+	backendPhotos, err := (*pl.backend).getPhotos()
+	if err != nil {
+		logger.Infof("Failed to get photos from %v. Doing nothing", pl.backend)
+		return photos, err
 	}
+	logger.Tracef("Getting photos and storing them in %v", pl.cacheDirectory)
 
 	for _, backendPhotoPath := range backendPhotos {
 		logger.Tracef("Procesing photo %v", backendPhotoPath)
-		if info, err := os.Stat(backendPhotoPath); err != nil {
+		info, err := os.Stat(backendPhotoPath)
+		if err != nil {
 			logger.Infof("Could not stat file %v. %v", backendPhotoPath, err)
 			continue
 		} else if info.IsDir() {
@@ -60,23 +63,24 @@ func (pl PhotoLinker) getPhotos() ([]string, error) {
 		}
 		defer backendPhotoFile.Close()
 
-		var backendPhotoContent []byte
+		backendPhotoContent := make([]byte, info.Size())
 		if _, err = backendPhotoFile.Read(backendPhotoContent); err != nil {
 			logger.Infof("Failed to read contents from file %v", backendPhotoPath)
 			continue
 		}
 
 		sum := sha1.Sum(backendPhotoContent)
-		format := util.IsBackground(backendPhotoContent)
-		backendPhotoFileName := fmt.Sprintf("%v.%v", sum, format)
+		photoName := hex.EncodeToString(sum[:])
+		format := util.IsBackground(false, backendPhotoPath)
+		photoFileName := fmt.Sprintf("%v.%v", photoName, format)
 
-		photoPath := filepath.Join(photoDir, backendPhotoFileName)
+		photoPath := filepath.Join(pl.cacheDirectory, photoFileName)
 
 		if info, err := os.Stat(photoPath); err == nil {
 			if info.IsDir() {
 				logger.Warningf("The to-be-linked exists and is a directory! %v", photoPath)
 			}
-			logger.Tracef("File %v exists, skipping.", photoPath)
+			logger.Debugf("File %v exists, skipping.", photoPath)
 			continue
 		}
 

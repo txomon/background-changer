@@ -36,7 +36,7 @@ func pictureMonitor(pictureStream chan string) {
 	var lastFileList, nextFileList []string
 
 	for {
-		cachePath := viper.GetString(ConfigurationCacheDir)
+		cachePath := viper.GetString(util.ConfigurationCacheDir)
 		_, err := os.Stat(cachePath)
 		if err != nil {
 			os.MkdirAll(cachePath, 0755)
@@ -53,7 +53,7 @@ func pictureMonitor(pictureStream chan string) {
 		}
 
 		// We wait for Duration before changing again
-		time.Sleep(viper.GetDuration(ConfigurationChangeInterval))
+		time.Sleep(viper.GetDuration(util.ConfigurationChangeInterval))
 		lastFile, nextFile = nextFile, ""
 		lastFileList, nextFileList = nextFileList, nil
 	}

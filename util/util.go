@@ -3,6 +3,8 @@ package util
 import (
 	"bytes"
 	"image"
+	_ "image/jpeg" // Need to register possible readers
+	_ "image/png"  // Need to register possible readers
 	"io"
 	"os"
 	"path/filepath"
@@ -13,12 +15,18 @@ import (
 
 var logger = loggo.GetLogger("sawyer.util")
 
+const (
+	ConfigurationChangeInterval = "change_interval"
+	ConfigurationCacheDir       = "cache_dir"
+	ConfigurationProviders      = "providers"
+)
+
 var supportedFormats []string
 
 func IsBackground(backgroundDescriptors ...interface{}) string {
 	var doRetries = true
-	for index, backgroundDescriptor := range backgroundDescriptors {
-		logger.Tracef("%v# try to find out if background using %v", index, backgroundDescriptor)
+	logger.Debugf("Trying to find out if background using %v features", len(backgroundDescriptors))
+	for _, backgroundDescriptor := range backgroundDescriptors {
 		retry := true
 		for retry {
 			retry = false
@@ -29,7 +37,7 @@ func IsBackground(backgroundDescriptors ...interface{}) string {
 				for _, supportedFormat := range supportedFormats {
 					if strings.HasSuffix(format, supportedFormat) {
 						logger.Tracef("File %v ends in %v so it's supported format", format, supportedFormat)
-						return format
+						return supportedFormat
 					}
 				}
 				if info, err := os.Stat(bd); err != nil {
@@ -116,4 +124,14 @@ func GetPhotosForPath(path string) []string {
 		return err
 	})
 	return fileList
+}
+
+func CreateStorageDir(cacheDirectory, providerName string) string {
+	backendCacheDirectory := filepath.Join(cacheDirectory, providerName)
+	err := os.MkdirAll(backendCacheDirectory, 0755)
+	if err != nil {
+		logger.Errorf("Failed creating %v cache dir. %v", backendCacheDirectory, err)
+		return ""
+	}
+	return backendCacheDirectory
 }

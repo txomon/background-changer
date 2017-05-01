@@ -16,12 +16,6 @@ var logger = loggo.GetLogger("sawyer")
 
 var obc de.OSBackgroundChanger
 
-const (
-	ConfigurationChangeInterval = "change_interval"
-	ConfigurationCacheDir       = "cache_dir"
-	ConfigurationProviders      = "providers"
-)
-
 func configure() {
 	// Configuration origins
 	viper.SetConfigType("json")
@@ -29,15 +23,15 @@ func configure() {
 	viper.AddConfigPath(".")
 
 	// Variables
-	viper.SetDefault(ConfigurationChangeInterval, time.Duration(math.Pow(10, 10))) // 10 seconds
-	viper.SetDefault(ConfigurationCacheDir, "./cache")
-	viper.SetDefault(ConfigurationProviders, make([]map[string]interface{}, 0))
+	viper.SetDefault(util.ConfigurationChangeInterval, time.Duration(math.Pow(10, 10))) // 10 seconds
+	viper.SetDefault(util.ConfigurationCacheDir, "./cache")
+	viper.SetDefault(util.ConfigurationProviders, make([]map[string]interface{}, 0))
 
 	// Load config
 	viper.ReadInConfig()
 
 	logger.SetLogLevel(loggo.TRACE)
-	loggo.GetLogger("sawyer.util").SetLogLevel(loggo.INFO)
+	//loggo.GetLogger("sawyer.util").SetLogLevel(loggo.INFO)
 }
 
 func DaemonMain() {
@@ -55,9 +49,9 @@ func DaemonMain() {
 	for _, supportedFormat := range obc.GetSupportedFormats() {
 		util.RegisterSupportedFormat(supportedFormat)
 	}
-	providerConfigs := viper.Get(ConfigurationProviders).([]interface{})
+	providerConfigs := viper.Get(util.ConfigurationProviders).([]interface{})
 	logger.Infof("Read config for providers %v", providerConfigs)
-	provider.RunProviders(providerConfigs)
+	provider.RunProviders(viper.GetString(util.ConfigurationCacheDir), providerConfigs)
 	go pictureMonitor(pictureStream)
 	obc.ChangeBackground(pictureStream)
 }

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,31 +16,29 @@ type PhotoDownloader struct {
 	cacheDirectory string
 }
 
-func (pd PhotoDownloader) run(photoProvider PhotoProvider) {
+func (pd PhotoDownloader) run(photoProvider *PhotoProvider) {
+	var pp PhotoProvider = pd
 	if photoProvider == nil {
-		photoProvider = pd
+		photoProvider = &pp
 	}
-	pd.backend.run(pd)
+	pd.backend.run(photoProvider)
+}
+func (pd PhotoDownloader) setStorageLocation(cacheDirectory string) {
+	pd.cacheDirectory = cacheDirectory
 }
 func (pd PhotoDownloader) String() string {
-	return fmt.Sprint("downloader-", pd.getBackendName())
+	return fmt.Sprint("downloader-", pd.getName())
 }
 
-func (pd PhotoDownloader) getBackendName() string {
-	return pd.backend.getBackendName()
+func (pd PhotoDownloader) getName() string {
+	return pd.backend.getName()
 }
 
 func (pd PhotoDownloader) getPhotos() ([]string, error) {
 	var photos []string
 	backendPhotos, err := pd.backend.getPhotos()
 	if err != nil {
-		logger.Errorf("PhotoDownloader encountered an error from backend %v getPhotos", pd.backend.getBackendName())
-		return nil, err
-	}
-	backendCacheDirectory := filepath.Join(pd.cacheDirectory, pd.backend.getBackendName())
-	err = os.MkdirAll(backendCacheDirectory, 0755)
-	if err != nil {
-		logger.Errorf("Failed creating %v cache dir. %v", backendCacheDirectory, err)
+		logger.Errorf("PhotoDownloader encountered an error from backend %v getPhotos", pd.backend.getName())
 		return nil, err
 	}
 	for _, photo := range backendPhotos {
@@ -47,21 +46,23 @@ func (pd PhotoDownloader) getPhotos() ([]string, error) {
 		if err != nil {
 			logger.Warningf("Failed to GET photo %v. %v", photo, err)
 		}
-		var photoContent []byte
-		_, err = res.Body.Read(photoContent)
-		if err != nil {
-			logger.Infof("Failed to read all the body from %v", photo)
+		photoContent := make([]byte, res.ContentLength)
+		if readBytes, err := res.Body.Read(photoContent); err != nil {
+			logger.Infof("Failed to read all the body from %v. %v", photo, err)
+			continue
+		} else if readBytes == 0 {
+			logger.Infof("Empty file %v", photo)
 		}
 		format := util.IsBackground(photoContent)
 		if "" == format {
 			logger.Infof("Photo %v format is not supported by backend", photo)
 			continue
 		}
-
-		photoName := sha1.Sum(photoContent)
+		sum := sha1.Sum(photoContent)
+		photoName := hex.EncodeToString(sum[:])
 		photoExtension := format
 		photoFilePath := fmt.Sprintf("%v.%v", photoName, photoExtension)
-		photoPath := filepath.Join(backendCacheDirectory, photoFilePath)
+		photoPath := filepath.Join(pd.cacheDirectory, photoFilePath)
 
 		stat, err := os.Stat(photoPath)
 		if err == nil {

@@ -1,13 +1,17 @@
 package provider
 
-import "github.com/juju/loggo"
+import (
+	"github.com/juju/loggo"
+	"github.com/txomon/sawyer/util"
+)
 
 var logger = loggo.GetLogger("sawyer.provider")
 
 type PhotoProvider interface {
 	getPhotos() ([]string, error)
-	getBackendName() string
-	run(PhotoProvider)
+	getName() string
+	run(*PhotoProvider)
+	setStorageLocation(string)
 }
 
 var registeredProviders = make(map[string]func(map[string]interface{}) PhotoProvider)
@@ -34,7 +38,7 @@ func GetProvider(config map[string]interface{}) PhotoProvider {
 	return provider
 }
 
-func RunProviders(configs []interface{}) {
+func RunProviders(cacheDirectory string, configs []interface{}) {
 	logger.Debugf("Providers registered %v", registeredProviders)
 	logger.Debugf("Config %v", configs)
 	for _, interfaceConfig := range configs {
@@ -43,6 +47,9 @@ func RunProviders(configs []interface{}) {
 		if provider == nil {
 			logger.Warningf("No provider found for %v", config)
 		} else {
+			storageDir := util.CreateStorageDir(cacheDirectory, provider.getName())
+			logger.Debugf("Setting %v(%p) storage dir %v", provider, &provider, storageDir)
+			provider.setStorageLocation(storageDir)
 			go provider.run(nil)
 		}
 	}
