@@ -62,9 +62,10 @@ func GetLocalPhotoProvider(config map[string]interface{}) PhotoProvider {
 		interval = 10
 	}
 	interval *= 1000000000
-	var lpp PhotoProvider = &LocalPhotoProvider{path: path, interval: interval}
-	var pl PhotoProvider = &PhotoLinker{backend: &lpp}
-	logger.Tracef("Creating %v[%p](backend:%v[%p])", pl, &pl, lpp, &lpp)
+	var pl PhotoProvider = &PhotoLinker{
+		backend: &LocalPhotoProvider{path: path, interval: interval},
+	}
+
 	return pl
 }
 

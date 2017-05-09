@@ -11,8 +11,9 @@ import (
 )
 
 type PhotoLinker struct {
-	backend        *PhotoProvider
+	backend        PhotoProvider
 	cacheDirectory string
+	memory         MapMemory
 }
 
 func (pl *PhotoLinker) run(photoProvider *PhotoProvider) {
@@ -20,26 +21,25 @@ func (pl *PhotoLinker) run(photoProvider *PhotoProvider) {
 	if photoProvider == nil {
 		photoProvider = &pp
 	}
-	(*pl.backend).run(photoProvider)
+	pl.backend.run(photoProvider)
 }
 func (pl *PhotoLinker) setStorageLocation(cacheDirectory string) {
-	logger.Tracef("Set storagedirectory to %v, %p", cacheDirectory, &pl)
 	pl.cacheDirectory = cacheDirectory
-	logger.Tracef("Set storagedirectory to %v, %p", pl.cacheDirectory, &pl)
+	pl.memory = NewMemory(cacheDirectory)
 }
 
 func (pl *PhotoLinker) String() string {
 	return fmt.Sprint("linked-", pl.getName())
 }
 func (pl *PhotoLinker) getName() string {
-	return (*pl.backend).getName()
+	return pl.backend.getName()
 }
 
-func (pl PhotoLinker) getPhotos() ([]string, error) {
+func (pl *PhotoLinker) getPhotos() ([]string, error) {
 	logger.Tracef("Storagedirectory to %v, %p", pl.cacheDirectory, &pl)
 	photos := make([]string, 0)
 
-	backendPhotos, err := (*pl.backend).getPhotos()
+	backendPhotos, err := pl.backend.getPhotos()
 	if err != nil {
 		logger.Infof("Failed to get photos from %v. Doing nothing", pl.backend)
 		return photos, err
@@ -48,6 +48,11 @@ func (pl PhotoLinker) getPhotos() ([]string, error) {
 
 	for _, backendPhotoPath := range backendPhotos {
 		logger.Tracef("Procesing photo %v", backendPhotoPath)
+		if cachedFile := pl.memory.getMemory(backendPhotoPath); cachedFile != "" {
+			photos = append(photos, cachedFile)
+			logger.Tracef("Cached file, nothing needs to be done")
+			continue
+		}
 		info, err := os.Stat(backendPhotoPath)
 		if err != nil {
 			logger.Infof("Could not stat file %v. %v", backendPhotoPath, err)
@@ -80,7 +85,9 @@ func (pl PhotoLinker) getPhotos() ([]string, error) {
 			if info.IsDir() {
 				logger.Warningf("The to-be-linked exists and is a directory! %v", photoPath)
 			}
-			logger.Debugf("File %v exists, skipping.", photoPath)
+			logger.Debugf("File %v exists, doing nothing.", photoPath)
+			photos = append(photos, photoPath)
+			pl.memory.setMemory(backendPhotoPath, photoPath)
 			continue
 		}
 
@@ -89,7 +96,6 @@ func (pl PhotoLinker) getPhotos() ([]string, error) {
 			if photoFile, err := os.Create(photoPath); err != nil {
 				logger.Warningf("Failed to create file in cache dir %v", photoPath)
 				continue
-
 			} else {
 				go func() {
 					photoFile.Write(backendPhotoContent)
@@ -100,6 +106,7 @@ func (pl PhotoLinker) getPhotos() ([]string, error) {
 			logger.Tracef("Linked file %v to %v", backendPhotoPath, photoPath)
 		}
 		photos = append(photos, photoPath)
+		pl.memory.setMemory(backendPhotoPath, photoPath)
 	}
 	return photos, nil
 }

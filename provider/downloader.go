@@ -16,25 +16,25 @@ type PhotoDownloader struct {
 	cacheDirectory string
 }
 
-func (pd PhotoDownloader) run(photoProvider *PhotoProvider) {
+func (pd *PhotoDownloader) run(photoProvider *PhotoProvider) {
 	var pp PhotoProvider = pd
 	if photoProvider == nil {
 		photoProvider = &pp
 	}
 	pd.backend.run(photoProvider)
 }
-func (pd PhotoDownloader) setStorageLocation(cacheDirectory string) {
+func (pd *PhotoDownloader) setStorageLocation(cacheDirectory string) {
 	pd.cacheDirectory = cacheDirectory
 }
-func (pd PhotoDownloader) String() string {
+func (pd *PhotoDownloader) String() string {
 	return fmt.Sprint("downloader-", pd.getName())
 }
 
-func (pd PhotoDownloader) getName() string {
+func (pd *PhotoDownloader) getName() string {
 	return pd.backend.getName()
 }
 
-func (pd PhotoDownloader) getPhotos() ([]string, error) {
+func (pd *PhotoDownloader) getPhotos() ([]string, error) {
 	var photos []string
 	backendPhotos, err := pd.backend.getPhotos()
 	if err != nil {
