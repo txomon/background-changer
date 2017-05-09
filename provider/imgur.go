@@ -1,7 +1,10 @@
 package provider
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 )
@@ -16,14 +19,78 @@ func buildImgurURL(endpoint string) string {
 	return fmt.Sprintf("https://api.imgur.com%v", endpoint)
 }
 
-func imgurGet(endpoint string) (interface{}, error) {
-	return nil, nil
+func (ip *ImgurProvider) imgurRequest(request *http.Request) (interface{}, error) {
+	request.Header.Add("Authorization", "Client-ID 61128aab04600a9")
+	response, err := ip.client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		logger.Infof("Something went wrong... %v => %v %v", response.Status, request.Method, request.URL)
+	}
+	defer response.Body.Close()
+	bodyData, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		logger.Infof("Failed to read body for %v %v", request.Method, request.URL)
+		return nil, err
+	}
+
+	var value interface{}
+	err = json.Unmarshal(bodyData, &value)
+	if err != nil {
+		logger.Infof("Unmarshalling failed... '%v'", bodyData)
+		return nil, err
+	}
+	return value, err
+}
+
+func (ip *ImgurProvider) imgurGet(endpoint string) (interface{}, error) {
+	request, err := http.NewRequest("GET", buildImgurURL(endpoint), nil)
+	if err != nil {
+		logger.Infof("Creating request failed")
+		return nil, err
+	}
+
+	return ip.imgurRequest(request)
+}
+
+func (ip *ImgurProvider) imgurPost(endpoint string, body interface{}) (interface{}, error) {
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		logger.Infof("Failed to marshall")
+		return nil, err
+	}
+
+	jsonReader := bytes.NewReader(jsonBody)
+	request, err := http.NewRequest("POST", buildImgurURL(endpoint), jsonReader)
+	if err != nil {
+		logger.Infof("Creating request failed")
+		return nil, err
+	}
+
+	return ip.imgurRequest(request)
+}
+
+func (ip *ImgurProvider) imgurPhotosFromAlbum(album string) ([]string, error) {
+	albumEndpoint := fmt.Sprintf("/3/gallery/album/%v", album)
+	result, err := ip.imgurGet(albumEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	data := result.(map[string]interface{})["data"]
+	imagesUrls := make([]string, 0)
+	albumImages := data.(map[string]interface{})["images"]
+	for _, imageI := range albumImages.([]interface{}) {
+		image := imageI.(map[string]interface{})
+		imageUrl := image["link"].(string)
+		imagesUrls = append(imagesUrls, imageUrl)
+	}
+	return imagesUrls, nil
 }
 
 func (ip *ImgurProvider) getPhotos() ([]string, error) {
-	photos := make([]string, 0)
-	// TODO
-	return photos, nil
+	return ip.imgurPhotosFromAlbum(ip.album)
 }
 
 func (ip *ImgurProvider) getName() string {
@@ -64,8 +131,16 @@ func GetImgurPhotoProvider(config map[string]interface{}) PhotoProvider {
 	interval *= 1000000000
 
 	var pl PhotoProvider = &PhotoDownloader{
-		backend: &ImgurProvider{album: album, interval: interval},
+		backend: &ImgurProvider{
+			album:    album,
+			interval: interval,
+			client:   http.Client{},
+		},
 	}
 
 	return pl
+}
+
+func init() {
+	RegisterProvider("imgur", GetImgurPhotoProvider)
 }

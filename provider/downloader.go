@@ -8,12 +8,15 @@ import (
 	"os"
 	"path/filepath"
 
+	"io/ioutil"
+
 	"github.com/txomon/sawyer/util"
 )
 
 type PhotoDownloader struct {
 	backend        PhotoProvider
 	cacheDirectory string
+	memory         MapMemory
 }
 
 func (pd *PhotoDownloader) run(photoProvider *PhotoProvider) {
@@ -25,6 +28,7 @@ func (pd *PhotoDownloader) run(photoProvider *PhotoProvider) {
 }
 func (pd *PhotoDownloader) setStorageLocation(cacheDirectory string) {
 	pd.cacheDirectory = cacheDirectory
+	pd.memory = NewMemory(cacheDirectory)
 }
 func (pd *PhotoDownloader) String() string {
 	return fmt.Sprint("downloader-", pd.getName())
@@ -42,18 +46,26 @@ func (pd *PhotoDownloader) getPhotos() ([]string, error) {
 		return nil, err
 	}
 	for _, photo := range backendPhotos {
+		if cachedFile := pd.memory.getMemory(photo); cachedFile != "" {
+			if _, err := os.Stat(cachedFile); err == nil {
+				photos = append(photos, cachedFile)
+				logger.Tracef("Cached file, nothing needs to be done")
+				continue
+			} else {
+				logger.Tracef("Cached file deleted, continuing as if not cached")
+			}
+		}
 		res, err := http.Get(photo)
 		if err != nil {
 			logger.Warningf("Failed to GET photo %v. %v", photo, err)
 		}
-		photoContent := make([]byte, res.ContentLength)
-		if readBytes, err := res.Body.Read(photoContent); err != nil {
+		logger.Tracef("Got photo %v %v", photo, res.Status)
+		photoContent, err := ioutil.ReadAll(res.Body)
+		if err != nil {
 			logger.Infof("Failed to read all the body from %v. %v", photo, err)
 			continue
-		} else if readBytes == 0 {
-			logger.Infof("Empty file %v", photo)
 		}
-		format := util.IsBackground(photoContent)
+		format := util.IsBackground(photo, photoContent)
 		if "" == format {
 			logger.Infof("Photo %v format is not supported by backend", photo)
 			continue
@@ -91,6 +103,7 @@ func (pd *PhotoDownloader) getPhotos() ([]string, error) {
 			}
 		}
 
+		pd.memory.setMemory(photo, photoPath)
 		photos = append(photos, photoPath)
 	}
 	return photos, err

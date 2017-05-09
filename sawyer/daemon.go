@@ -30,7 +30,7 @@ func configure() {
 	// Load config
 	viper.ReadInConfig()
 
-	logger.SetLogLevel(loggo.TRACE)
+	logger.SetLogLevel(loggo.INFO)
 	//loggo.GetLogger("sawyer.util").SetLogLevel(loggo.INFO)
 }
 

@@ -49,9 +49,14 @@ func (pl *PhotoLinker) getPhotos() ([]string, error) {
 	for _, backendPhotoPath := range backendPhotos {
 		logger.Tracef("Procesing photo %v", backendPhotoPath)
 		if cachedFile := pl.memory.getMemory(backendPhotoPath); cachedFile != "" {
-			photos = append(photos, cachedFile)
-			logger.Tracef("Cached file, nothing needs to be done")
-			continue
+			if _, err := os.Stat(cachedFile); err == nil {
+				photos = append(photos, cachedFile)
+				logger.Tracef("Cached file, nothing needs to be done")
+				continue
+			} else {
+				logger.Tracef("Cached file deleted, continuing as if not cached")
+
+			}
 		}
 		info, err := os.Stat(backendPhotoPath)
 		if err != nil {
