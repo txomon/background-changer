@@ -16,30 +16,30 @@ type PhotoLinker struct {
 	memory         MapMemory
 }
 
-func (pl *PhotoLinker) run(photoProvider *PhotoProvider) {
+func (pl *PhotoLinker) Run(photoProvider *PhotoProvider) {
 	var pp PhotoProvider = pl
 	if photoProvider == nil {
 		photoProvider = &pp
 	}
-	pl.backend.run(photoProvider)
+	pl.backend.Run(photoProvider)
 }
-func (pl *PhotoLinker) setStorageLocation(cacheDirectory string) {
+func (pl *PhotoLinker) SetStorageLocation(cacheDirectory string) {
 	pl.cacheDirectory = cacheDirectory
 	pl.memory = NewMemory(cacheDirectory)
 }
 
 func (pl *PhotoLinker) String() string {
-	return fmt.Sprint("linked-", pl.getName())
+	return fmt.Sprint("linked-", pl.GetName())
 }
-func (pl *PhotoLinker) getName() string {
-	return pl.backend.getName()
+func (pl *PhotoLinker) GetName() string {
+	return pl.backend.GetName()
 }
 
-func (pl *PhotoLinker) getPhotos() ([]string, error) {
+func (pl *PhotoLinker) GetPhotos() ([]string, error) {
 	logger.Tracef("Storagedirectory to %v, %p", pl.cacheDirectory, &pl)
 	photos := make([]string, 0)
 
-	backendPhotos, err := pl.backend.getPhotos()
+	backendPhotos, err := pl.backend.GetPhotos()
 	if err != nil {
 		logger.Infof("Failed to get photos from %v. Doing nothing", pl.backend)
 		return photos, err

@@ -15,19 +15,19 @@ type LocalPhotoProvider struct {
 }
 
 func (lpp *LocalPhotoProvider) String() string {
-	return lpp.getName()
+	return lpp.GetName()
 }
-func (lpp *LocalPhotoProvider) setStorageLocation(cacheDirectory string) {
+func (lpp *LocalPhotoProvider) SetStorageLocation(cacheDirectory string) {
 }
 
-func (lpp *LocalPhotoProvider) run(photoProvider *PhotoProvider) {
+func (lpp *LocalPhotoProvider) Run(photoProvider *PhotoProvider) {
 	var pp PhotoProvider = lpp
 	if photoProvider == nil {
 		photoProvider = &pp
 	}
 	logger.Debugf("Running %v with %v", lpp, photoProvider)
 	for {
-		if photos, err := (*photoProvider).getPhotos(); err == nil {
+		if photos, err := (*photoProvider).GetPhotos(); err == nil {
 			logger.Debugf("Got %v photos", len(photos))
 		} else {
 			logger.Infof("Failed to use photos from %v. %v", lpp.path, err)
@@ -35,7 +35,7 @@ func (lpp *LocalPhotoProvider) run(photoProvider *PhotoProvider) {
 		time.Sleep(time.Duration(lpp.interval))
 	}
 }
-func (lpp *LocalPhotoProvider) getName() string {
+func (lpp *LocalPhotoProvider) GetName() string {
 	name := strings.Map(func(char rune) rune {
 		if unicode.IsLetter(char) || unicode.IsNumber(char) {
 			return char
@@ -45,7 +45,7 @@ func (lpp *LocalPhotoProvider) getName() string {
 	return fmt.Sprintf("local-%v", name)
 }
 
-func (lpp *LocalPhotoProvider) getPhotos() ([]string, error) {
+func (lpp *LocalPhotoProvider) GetPhotos() ([]string, error) {
 	photos := util.GetPhotosForPath(lpp.path)
 	return photos, nil
 }

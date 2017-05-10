@@ -19,30 +19,30 @@ type PhotoDownloader struct {
 	memory         MapMemory
 }
 
-func (pd *PhotoDownloader) run(photoProvider *PhotoProvider) {
+func (pd *PhotoDownloader) Run(photoProvider *PhotoProvider) {
 	var pp PhotoProvider = pd
 	if photoProvider == nil {
 		photoProvider = &pp
 	}
-	pd.backend.run(photoProvider)
+	pd.backend.Run(photoProvider)
 }
-func (pd *PhotoDownloader) setStorageLocation(cacheDirectory string) {
+func (pd *PhotoDownloader) SetStorageLocation(cacheDirectory string) {
 	pd.cacheDirectory = cacheDirectory
 	pd.memory = NewMemory(cacheDirectory)
 }
 func (pd *PhotoDownloader) String() string {
-	return fmt.Sprint("downloader-", pd.getName())
+	return fmt.Sprint("downloader-", pd.GetName())
 }
 
-func (pd *PhotoDownloader) getName() string {
-	return pd.backend.getName()
+func (pd *PhotoDownloader) GetName() string {
+	return pd.backend.GetName()
 }
 
-func (pd *PhotoDownloader) getPhotos() ([]string, error) {
+func (pd *PhotoDownloader) GetPhotos() ([]string, error) {
 	var photos []string
-	backendPhotos, err := pd.backend.getPhotos()
+	backendPhotos, err := pd.backend.GetPhotos()
 	if err != nil {
-		logger.Errorf("PhotoDownloader encountered an error from backend %v getPhotos", pd.backend.getName())
+		logger.Errorf("PhotoDownloader encountered an error from backend %v getPhotos", pd.backend.GetName())
 		return nil, err
 	}
 	for _, photo := range backendPhotos {

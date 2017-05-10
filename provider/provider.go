@@ -8,10 +8,10 @@ import (
 var logger = loggo.GetLogger("sawyer.provider")
 
 type PhotoProvider interface {
-	getPhotos() ([]string, error)
-	getName() string
-	run(*PhotoProvider)
-	setStorageLocation(string)
+	GetPhotos() ([]string, error)
+	GetName() string
+	Run(*PhotoProvider)
+	SetStorageLocation(string)
 }
 
 var registeredProviders = make(map[string]func(map[string]interface{}) PhotoProvider)
@@ -47,10 +47,10 @@ func RunProviders(cacheDirectory string, configs []interface{}) {
 		if provider == nil {
 			logger.Warningf("No provider found for %v", config)
 		} else {
-			storageDir := util.CreateStorageDir(cacheDirectory, provider.getName())
+			storageDir := util.CreateStorageDir(cacheDirectory, provider.GetName())
 			logger.Debugf("Setting %v(%p) storage dir %v", provider, &provider, storageDir)
-			provider.setStorageLocation(storageDir)
-			go provider.run(nil)
+			provider.SetStorageLocation(storageDir)
+			go provider.Run(nil)
 		}
 	}
 }

@@ -111,7 +111,7 @@ func (ip *ImgurProvider) imgurPhotosFromAlbum(album string) ([]string, error) {
 	}
 	return imagesUrls, nil
 }
-func (ip *ImgurProvider) getPhotos() ([]string, error) {
+func (ip *ImgurProvider) GetPhotos() ([]string, error) {
 	photos, err := ip.imgurPhotosFromAlbum(ip.album)
 	if err != nil {
 		return ip.imgurPhotosFromGallery(ip.album)
@@ -119,14 +119,14 @@ func (ip *ImgurProvider) getPhotos() ([]string, error) {
 	return photos, err
 }
 
-func (ip *ImgurProvider) getName() string {
+func (ip *ImgurProvider) GetName() string {
 	return fmt.Sprintf("imgur-%v", ip.album)
 }
 
-func (ip *ImgurProvider) setStorageLocation(location string) {
+func (ip *ImgurProvider) SetStorageLocation(location string) {
 }
 
-func (ip *ImgurProvider) run(photoProvider *PhotoProvider) {
+func (ip *ImgurProvider) Run(photoProvider *PhotoProvider) {
 	var pp PhotoProvider = ip
 
 	if photoProvider == nil {
@@ -134,7 +134,7 @@ func (ip *ImgurProvider) run(photoProvider *PhotoProvider) {
 	}
 
 	for {
-		if photos, err := (*photoProvider).getPhotos(); err == nil {
+		if photos, err := (*photoProvider).GetPhotos(); err == nil {
 			logger.Debugf("Got %v photos", len(photos))
 		} else {
 			logger.Infof("Failed to get photos from %v. %v", ip.album, err)

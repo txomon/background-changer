@@ -22,13 +22,10 @@ func configure() error {
 	// Configuration origins
 	viper.SetConfigType("json")
 	viper.SetConfigFile("config.json")
-	viper.AddConfigPath("/etc/sawyer")
-	viper.AddConfigPath("~/.cache/sawyer")
-	viper.AddConfigPath(".")
 
 	// Variables
 	viper.SetDefault(util.ConfigurationChangeInterval, 10)
-	viper.SetDefault(util.ConfigurationCacheDir, "./cache")
+	viper.SetDefault(util.ConfigurationCacheDir, "cache")
 	viper.SetDefault(util.ConfigurationProviders, make([]interface{}, 0))
 
 	// Load config
@@ -45,12 +42,6 @@ func configure() error {
 func DaemonMain() {
 	pictureStream := make(chan string)
 
-	err := configure()
-	for err != nil {
-		time.Sleep(time.Duration(10000000000))
-		err = configure()
-	}
-
 	switch runtime.GOOS {
 	case "linux":
 		obc = de.LinuxBackgroundChanger{}
@@ -58,6 +49,15 @@ func DaemonMain() {
 		logger.Errorf("OS %v is not supported by background changer", runtime.GOOS)
 		return
 	}
+	obc.configure()
+
+	err := configure()
+	for err != nil {
+		time.Sleep(time.Duration(10000000000))
+		err = configure()
+		logger.Infof("Configuration failed because of %v", err)
+	}
+
 	for _, supportedFormat := range obc.GetSupportedFormats() {
 		util.RegisterSupportedFormat(supportedFormat)
 	}
