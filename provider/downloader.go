@@ -60,6 +60,7 @@ func (pd *PhotoDownloader) getPhotos() ([]string, error) {
 			logger.Warningf("Failed to GET photo %v. %v", photo, err)
 		}
 		logger.Tracef("Got photo %v %v", photo, res.Status)
+		defer res.Body.Close()
 		photoContent, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			logger.Infof("Failed to read all the body from %v. %v", photo, err)

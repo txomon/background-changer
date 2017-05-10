@@ -19,6 +19,12 @@ func buildImgurURL(endpoint string) string {
 	return fmt.Sprintf("https://api.imgur.com%v", endpoint)
 }
 
+type NotFoundError struct{}
+
+func (nfe NotFoundError) Error() string {
+	return "Album or Gallery not found"
+}
+
 func (ip *ImgurProvider) imgurRequest(request *http.Request) (interface{}, error) {
 	request.Header.Add("Authorization", "Client-ID 61128aab04600a9")
 	response, err := ip.client.Do(request)
@@ -28,6 +34,7 @@ func (ip *ImgurProvider) imgurRequest(request *http.Request) (interface{}, error
 
 	if response.StatusCode != 200 {
 		logger.Infof("Something went wrong... %v => %v %v", response.Status, request.Method, request.URL)
+		return nil, NotFoundError{}
 	}
 	defer response.Body.Close()
 	bodyData, err := ioutil.ReadAll(response.Body)
@@ -72,8 +79,8 @@ func (ip *ImgurProvider) imgurPost(endpoint string, body interface{}) (interface
 	return ip.imgurRequest(request)
 }
 
-func (ip *ImgurProvider) imgurPhotosFromAlbum(album string) ([]string, error) {
-	albumEndpoint := fmt.Sprintf("/3/gallery/album/%v", album)
+func (ip *ImgurProvider) imgurPhotosFromGallery(gallery string) ([]string, error) {
+	albumEndpoint := fmt.Sprintf("/3/gallery/album/%v", gallery)
 	result, err := ip.imgurGet(albumEndpoint)
 	if err != nil {
 		return nil, err
@@ -89,8 +96,27 @@ func (ip *ImgurProvider) imgurPhotosFromAlbum(album string) ([]string, error) {
 	return imagesUrls, nil
 }
 
+func (ip *ImgurProvider) imgurPhotosFromAlbum(album string) ([]string, error) {
+	albumEndpoint := fmt.Sprintf("/3/album/%v/images", album)
+	result, err := ip.imgurGet(albumEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	data := result.(map[string]interface{})["data"]
+	imagesUrls := make([]string, 0)
+	for _, imageI := range data.([]interface{}) {
+		image := imageI.(map[string]interface{})
+		imageUrl := image["link"].(string)
+		imagesUrls = append(imagesUrls, imageUrl)
+	}
+	return imagesUrls, nil
+}
 func (ip *ImgurProvider) getPhotos() ([]string, error) {
-	return ip.imgurPhotosFromAlbum(ip.album)
+	photos, err := ip.imgurPhotosFromAlbum(ip.album)
+	if err != nil {
+		return ip.imgurPhotosFromGallery(ip.album)
+	}
+	return photos, err
 }
 
 func (ip *ImgurProvider) getName() string {

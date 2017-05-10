@@ -53,7 +53,8 @@ func pictureMonitor(pictureStream chan string) {
 		}
 
 		// We wait for Duration before changing again
-		time.Sleep(viper.GetDuration(util.ConfigurationChangeInterval))
+		configuredDuration := viper.GetDuration(util.ConfigurationChangeInterval)
+		time.Sleep(configuredDuration * 1000000000)
 		lastFile, nextFile = nextFile, ""
 		lastFileList, nextFileList = nextFileList, nil
 	}

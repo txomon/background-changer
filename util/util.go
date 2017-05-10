@@ -98,6 +98,10 @@ func RegisterSupportedFormat(format string) {
 
 func GetPhotosForPath(path string) []string {
 	fileList := make([]string, 0)
+	if _, err := os.Stat(path); err != nil {
+		logger.Infof("Path %v doesn't exist, skipping", path)
+		return make([]string, 0)
+	}
 	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			logger.Debugf("Photos can only be files, skipping dir %v", path)

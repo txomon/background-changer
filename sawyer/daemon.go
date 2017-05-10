@@ -1,8 +1,8 @@
 package sawyer
 
 import (
-	"math"
 	"runtime"
+
 	"time"
 
 	"github.com/juju/loggo"
@@ -16,28 +16,40 @@ var logger = loggo.GetLogger("sawyer")
 
 var obc de.OSBackgroundChanger
 
-func configure() {
+func configure() error {
+	logger.SetLogLevel(loggo.INFO)
+
 	// Configuration origins
 	viper.SetConfigType("json")
 	viper.SetConfigFile("config.json")
+	viper.AddConfigPath("/etc/sawyer")
+	viper.AddConfigPath("~/.cache/sawyer")
 	viper.AddConfigPath(".")
 
 	// Variables
-	viper.SetDefault(util.ConfigurationChangeInterval, time.Duration(math.Pow(10, 10))) // 10 seconds
+	viper.SetDefault(util.ConfigurationChangeInterval, 10)
 	viper.SetDefault(util.ConfigurationCacheDir, "./cache")
-	viper.SetDefault(util.ConfigurationProviders, make([]map[string]interface{}, 0))
+	viper.SetDefault(util.ConfigurationProviders, make([]interface{}, 0))
 
 	// Load config
-	viper.ReadInConfig()
+	err := viper.ReadInConfig()
+	if err != nil {
+		logger.Infof("Configuration file not found, not retrying")
+		return err
+	}
 
-	logger.SetLogLevel(loggo.INFO)
 	//loggo.GetLogger("sawyer.util").SetLogLevel(loggo.INFO)
+	return nil
 }
 
 func DaemonMain() {
 	pictureStream := make(chan string)
 
-	configure()
+	err := configure()
+	for err != nil {
+		time.Sleep(time.Duration(10000000000))
+		err = configure()
+	}
 
 	switch runtime.GOOS {
 	case "linux":
