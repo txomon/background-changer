@@ -14,8 +14,6 @@ import (
 
 var logger = loggo.GetLogger("sawyer")
 
-var obc de.OSBackgroundChanger
-
 func configure() error {
 	logger.SetLogLevel(loggo.INFO)
 
@@ -31,7 +29,7 @@ func configure() error {
 	// Load config
 	err := viper.ReadInConfig()
 	if err != nil {
-		logger.Infof("Configuration file not found, not retrying")
+		logger.Infof("Configuration file read failed. %v", err)
 		return err
 	}
 
@@ -44,18 +42,25 @@ func DaemonMain() {
 
 	switch runtime.GOOS {
 	case "linux":
-		obc = de.LinuxBackgroundChanger{}
+		viper.AddConfigPath(".")
+		viper.AddConfigPath("~/.cache/sawyer")
+		viper.AddConfigPath("~/.config/sawyer")
+		viper.AddConfigPath("/etc/sawyer")
+	case "darwin":
+		viper.AddConfigPath(".")
+		viper.AddConfigPath("~/Library/Caches/sawyer")
+		viper.AddConfigPath("~/Library/Preferences/sawyer")
 	default:
 		logger.Errorf("OS %v is not supported by background changer", runtime.GOOS)
 		return
 	}
-	obc.configure()
+	obc := de.GetDEBackgroundChanger("")
 
 	err := configure()
 	for err != nil {
+		logger.Infof("Retrying in 10 seconds")
 		time.Sleep(time.Duration(10000000000))
 		err = configure()
-		logger.Infof("Configuration failed because of %v", err)
 	}
 
 	for _, supportedFormat := range obc.GetSupportedFormats() {
