@@ -1,10 +1,31 @@
+// +build darwin
+
 package de
 
-import (
-	"os/exec"
+/*
+#cgo CFLAGS: -x objective-c
+#cgo LDFLAGS:  -framework AppKit
 
-	"fmt"
+#import <AppKit/AppKit.h>
+#include <stdlib.h>
+
+void change_background(char *image) {
+	NSError *error;
+	NSURL *imageURL;
+	NSDictionary *options = @{};
+	imageURL = [NSURL URLWithString:[NSString stringWithFormat:@"file://localhost%@", [NSString stringWithUTF8String:image]]];
+
+    for (NSScreen *screen in [NSScreen screens]) {
+        [[NSWorkspace sharedWorkspace] setDesktopImageURL:imageURL forScreen:screen options:@{} error:&error ];
+    }
+}
+
+*/
+import "C"
+
+import (
 	"runtime"
+	"unsafe"
 )
 
 type MacOsXBackgroundChanger struct{}
@@ -12,17 +33,10 @@ type MacOsXBackgroundChanger struct{}
 func (lbc *MacOsXBackgroundChanger) ChangeBackground(pictureStream chan string) {
 	for {
 		picture := <-pictureStream
-		query := fmt.Sprintf("update data set value = '%v';", picture)
-		command := exec.Command("sqlite3", "~/Library/Application Support/Dock/desktoppicture.db", query)
-		err := command.Run()
-		if err != nil {
-			logger.Errorf("%v", err)
-		}
-		command = exec.Command("killall", "Dock")
-		err = command.Run()
-		if err != nil {
-			logger.Errorf("%v", err)
-		}
+		logger.Infof("Picture would be %v", picture)
+		pictureString := C.CString(picture)
+		defer C.free((unsafe.Pointer)(pictureString))
+		C.change_background(pictureString)
 	}
 }
 func (lbc *MacOsXBackgroundChanger) GetSupportedFormats() []string {
