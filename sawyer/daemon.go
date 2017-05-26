@@ -3,7 +3,11 @@ package sawyer
 import (
 	"runtime"
 
+	homedir "github.com/mitchellh/go-homedir"
+
 	"time"
+
+	"path/filepath"
 
 	"github.com/juju/loggo"
 	"github.com/spf13/viper"
@@ -15,11 +19,14 @@ import (
 var logger = loggo.GetLogger("sawyer")
 
 func configure() error {
+	//jww.SetLogThreshold(jww.LevelTrace)
+	//jww.SetStdoutThreshold(jww.LevelTrace)
+
 	logger.SetLogLevel(loggo.INFO)
 
 	// Configuration origins
 	viper.SetConfigType("json")
-	viper.SetConfigFile("config.json")
+	viper.SetConfigName("config")
 
 	// Variables
 	viper.SetDefault(util.ConfigurationChangeInterval, 10)
@@ -40,16 +47,21 @@ func configure() error {
 func DaemonMain() {
 	pictureStream := make(chan string)
 
+	home, isHome := homedir.Dir()
 	switch runtime.GOOS {
 	case "linux":
 		viper.AddConfigPath(".")
-		viper.AddConfigPath("~/.cache/sawyer")
-		viper.AddConfigPath("~/.config/sawyer")
+		if isHome == nil {
+			viper.AddConfigPath(filepath.Join(home, "/.cache/sawyer"))
+			viper.AddConfigPath(filepath.Join(home, "/.config/sawyer"))
+		}
 		viper.AddConfigPath("/etc/sawyer")
 	case "darwin":
 		viper.AddConfigPath(".")
-		viper.AddConfigPath("~/Library/Caches/sawyer")
-		viper.AddConfigPath("~/Library/Preferences/sawyer")
+		if isHome == nil {
+			viper.AddConfigPath(filepath.Join(home, "Library/Caches/sawyer"))
+			viper.AddConfigPath(filepath.Join(home, "Library/Preferences/sawyer"))
+		}
 	default:
 		logger.Errorf("OS %v is not supported by background changer", runtime.GOOS)
 		return
