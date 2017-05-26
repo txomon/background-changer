@@ -8,5 +8,9 @@
 		<string>/Users/txomon/Library/Caches/sawyer/sawyer.bin</string>
 		<key>RunAtLoad</key>
 		<true/>
+		<key>StandardOutPath</key>
+		<string>/Users/txomon/Library/Caches/sawyer/sawyer.log</string>
+		<key>StandardErrorPath</key>
+		<string>/Users/txomon/Library/Caches/sawyer/sawyer.log</string>
 	</dict>
 </plist>
