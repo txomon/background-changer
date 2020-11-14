@@ -11,9 +11,9 @@ import (
 
 	"github.com/juju/loggo"
 	"github.com/spf13/viper"
-	"github.com/txomon/sawyer/de"
-	"github.com/txomon/sawyer/provider"
-	"github.com/txomon/sawyer/util"
+	"github.com/txomon/sawyer/pkg/de"
+	"github.com/txomon/sawyer/pkg/provider"
+	"github.com/txomon/sawyer/pkg/util"
 )
 
 var logger = loggo.GetLogger("sawyer")

@@ -6,7 +6,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/txomon/sawyer/util"
+	"github.com/txomon/sawyer/pkg/util"
 )
 
 type LocalPhotoProvider struct {

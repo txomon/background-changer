@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
-	"github.com/txomon/sawyer/util"
+	"github.com/txomon/sawyer/pkg/util"
 )
 
 func getNextInList(lastItem string, previousList []string, nextList []string) string {

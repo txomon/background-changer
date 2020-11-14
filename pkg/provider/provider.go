@@ -2,7 +2,7 @@ package provider
 
 import (
 	"github.com/juju/loggo"
-	"github.com/txomon/sawyer/util"
+	"github.com/txomon/sawyer/pkg/util"
 )
 
 var logger = loggo.GetLogger("sawyer.provider")

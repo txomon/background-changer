@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/txomon/sawyer/util"
+	"github.com/txomon/sawyer/pkg/util"
 )
 
 type PhotoLinker struct {

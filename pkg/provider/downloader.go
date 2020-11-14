@@ -10,7 +10,7 @@ import (
 
 	"io/ioutil"
 
-	"github.com/txomon/sawyer/util"
+	"github.com/txomon/sawyer/pkg/util"
 )
 
 type PhotoDownloader struct {
