@@ -82,5 +82,5 @@ func DaemonMain() {
 	logger.Infof("Read config for providers %v", providerConfigs)
 	provider.RunProviders(viper.GetString(util.ConfigurationCacheDir), providerConfigs)
 	go pictureMonitor(pictureStream)
-	obc.ChangeBackground(pictureStream)
+	obc.Set(pictureStream)
 }

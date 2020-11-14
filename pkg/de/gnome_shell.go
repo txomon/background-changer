@@ -8,7 +8,7 @@ import (
 
 type GnomeShellBackgroundChanger struct{}
 
-func (lbc *GnomeShellBackgroundChanger) ChangeBackground(pictureStream chan string) {
+func (lbc *GnomeShellBackgroundChanger) Set(pictureStream chan string) {
 	for {
 		picture := <-pictureStream
 		command := exec.Command("gsettings", "set", "org.gnome.desktop.background", "picture-uri", picture)

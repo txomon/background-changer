@@ -5,7 +5,7 @@ import "github.com/juju/loggo"
 var logger = loggo.GetLogger("sawyer.de")
 
 type DEBackgroundChanger interface {
-	ChangeBackground(chan string)
+	Set(chan string)
 	GetSupportedFormats() []string
 }
 
